@@ -1,0 +1,10 @@
+Communication: 22:29:07.294793 main.go:244: Waiter nr 0 sent order 2 to kitchen
+Communication: 22:29:07.295302 main.go:244: Waiter nr 0 sent order 2 to kitchen
+Communication: 22:29:07.298979 main.go:244: Waiter nr 2 sent order 4 to kitchen
+Communication: 22:29:07.300390 main.go:244: Waiter nr 1 sent order 5 to kitchen
+Communication: 22:29:07.301739 main.go:244: Waiter nr 0 sent order 6 to kitchen
+Communication: 22:29:07.304122 main.go:244: Waiter nr 2 sent order 8 to kitchen
+Communication: 22:29:07.306601 main.go:244: Waiter nr 1 sent order 9 to kitchen
+Communication: 22:29:07.309000 main.go:244: Waiter nr 3 sent order 10 to kitchen
+Communication: 22:29:07.310290 main.go:244: Waiter nr 3 sent order 10 to kitchen
+Communication: 22:29:07.312842 main.go:244: Waiter nr 3 sent order 10 to kitchen
