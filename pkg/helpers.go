@@ -26,22 +26,22 @@ func (c *Counter) Value() int {
 }
 
 func DetermineRating(maxWait int, pickUpTime, servingTime time.Time, RUNSPEED time.Duration, correctDelivery bool) int {
-	rating:= 0
+	rating := 0
 
 	if !correctDelivery {
 		return 0
 	}
 
 	switch {
-	case int(servingTime.Sub(pickUpTime) / RUNSPEED) < maxWait:
+	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < maxWait:
 		rating = 5
-	case int(servingTime.Sub(pickUpTime) / RUNSPEED) < (maxWait * 11) / 10:
+	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*11)/10:
 		rating = 4
-	case int(servingTime.Sub(pickUpTime) / RUNSPEED) < (maxWait * 12) / 10:
+	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*12)/10:
 		rating = 3
-	case int(servingTime.Sub(pickUpTime) / RUNSPEED) < (maxWait * 13) / 10:
+	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*13)/10:
 		rating = 2
-	case int(servingTime.Sub(pickUpTime) / RUNSPEED) < (maxWait * 14) / 10:
+	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*14)/10:
 		rating = 1
 	default:
 		rating = 0
@@ -56,14 +56,16 @@ func CheckMatchingOrders(order Order, orderResponse OrderResponse) bool {
 		order.WaiterID != orderResponse.WaiterID ||
 		order.Priority != orderResponse.Priority ||
 		order.MaxWait != orderResponse.MaxWait ||
-		order.PickUpTime != orderResponse.PickUpTime ||
-		!slicesEqual(order.Items, orderResponse.Items) {
+
+		!order.PickUpTime.Local().Equal(orderResponse.PickUpTime) ||
+		!SlicesEqual(order.Items, orderResponse.Items) {
 		return false
 	}
+
 	return true
 }
 
-func slicesEqual(sa []int, sb []int) bool {
+func SlicesEqual(sa []int, sb []int) bool {
 	if len(sa) != len(sb) {
 		return false
 	}
