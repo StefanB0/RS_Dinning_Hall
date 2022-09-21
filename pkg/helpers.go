@@ -2,8 +2,28 @@ package pkg
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
+
+type Counter struct {
+	I  int
+	mu sync.Mutex
+}
+
+func (c *Counter) Increment() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.I++
+}
+
+func (c *Counter) Value() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.I
+}
 
 func DetermineRating(maxWait int, pickUpTime, servingTime time.Time, RUNSPEED time.Duration, correctDelivery bool) int {
 	rating:= 0

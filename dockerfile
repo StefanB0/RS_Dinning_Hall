@@ -5,8 +5,7 @@ WORKDIR /app
 
 COPY go.mod ./
 COPY go.sum ./
-COPY resources ./resources
-# COPY . /app/
+COPY pkg ./pkg
 
 RUN go mod download
 
@@ -14,6 +13,6 @@ COPY *.go ./
 
 RUN go build -o /docker-dinning-hall
 
-EXPOSE 8068
+EXPOSE 8882
 
 CMD [ "/docker-dinning-hall" ]
