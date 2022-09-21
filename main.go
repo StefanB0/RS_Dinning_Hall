@@ -27,8 +27,6 @@ const (
 	MIN_W_DELAY = 2
 	MAX_W_DELAY = 4
 	RUNSPEED    = time.Millisecond
-
-	DEV = true
 )
 
 const (
@@ -141,6 +139,7 @@ func (s *MyServer) ShutdownHandler(w http.ResponseWriter, r *http.Request) {
 func receiveRequest(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+
 		errorLog.Println("Invalid request")
 	}
 

@@ -56,6 +56,7 @@ func CheckMatchingOrders(order Order, orderResponse OrderResponse) bool {
 		order.WaiterID != orderResponse.WaiterID ||
 		order.Priority != orderResponse.Priority ||
 		order.MaxWait != orderResponse.MaxWait ||
+
 		!order.PickUpTime.Local().Equal(orderResponse.PickUpTime) ||
 		!SlicesEqual(order.Items, orderResponse.Items) {
 		return false
