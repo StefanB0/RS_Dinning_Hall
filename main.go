@@ -23,10 +23,12 @@ const (
 	KITCHEN_URL = "http://kitchen:8881/order"
 	LISTENPORT  = ":8882"
 	NR_WAITERS  = 4
-	NR_TABLES   = 10
-	RUNSPEED    = time.Millisecond
+	NR_TABLES   = 3
 	MIN_W_DELAY = 2
 	MAX_W_DELAY = 4
+	RUNSPEED    = time.Millisecond
+
+	DEV = true
 )
 
 const (
@@ -139,13 +141,13 @@ func (s *MyServer) ShutdownHandler(w http.ResponseWriter, r *http.Request) {
 func receiveRequest(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("Invalid request")
+		errorLog.Println("Invalid request")
 	}
 
 	var newFinishedDish pkg.OrderResponse
 	json.Unmarshal(reqBody, &newFinishedDish)
 
-	log.Println("Order received, id:", newFinishedDish.OrderID)
+	communicationLog.Println("Order received:", newFinishedDish.OrderID)
 	waiters[newFinishedDish.WaiterID].waiterChannel <- newFinishedDish
 	w.WriteHeader(http.StatusCreated)
 }
@@ -185,19 +187,20 @@ func initializeWaiters() {
 }
 
 func initLogs() {
-	waiterFile, err1 := os.OpenFile("logs/waiter_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	orderFile, err2 := os.OpenFile("logs/order_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	communicationFile, err3 := os.OpenFile("logs/communication_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	errorFile, err4 := os.OpenFile("logs/error_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	// waiterFile, err1 := os.OpenFile("logs/waiter_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	// orderFile, err2 := os.OpenFile("logs/order_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	// communicationFile, err3 := os.OpenFile("logs/communication_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	// errorFile, err4 := os.OpenFile("logs/error_logs.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 
-	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
-		log.Fatal(err1, err2, err3, err4)
-	}
+	// if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+	// 	log.Fatal(err1, err2, err3, err4)
+	// }
 
-	waiterLog = log.New(waiterFile, "Waiter: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	orderLog = log.New(orderFile, "Order: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	communicationLog = log.New(communicationFile, "Communication: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	errorLog = log.New(errorFile, "error: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	waiterLog = log.New(log.Writer(), "Waiter: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	orderLog = log.New(log.Writer(), "Order: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	communicationLog = log.New(log.Writer(), "Communication: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	errorLog = log.New(log.Writer(), "error: ", log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	log.Println("123")
 }
 
 func (w *Waiter) workingWaiter() {
@@ -207,6 +210,7 @@ func (w *Waiter) workingWaiter() {
 			w.takeOrder(t)
 
 		case returnOrder := <-w.waiterChannel:
+			returnOrder.PickUpTime.Round(RUNSPEED)
 			w.returnOrderToTable(returnOrder)
 		}
 	}
@@ -234,10 +238,22 @@ func (w *Waiter) returnOrderToTable(returnOrder pkg.OrderResponse) {
 		correctDelivery,
 	)
 
+	orderLog.Println("Order:", returnOrder.OrderID, "Match order:", correctDelivery, "Waiter:", w.waiterID, "Table:", returnOrder.TableID, "Rating:", rating)
+	if !correctDelivery {
+		errorLog.Println(
+			"Order ID:", returnOrder.OrderID, "Table:", returnOrder.TableID, "Waiter:", w.waiterID, "\n",
+			"Returned/Expected\n",
+			"Order ID:", returnOrder.OrderID, ":", tables[returnOrder.TableID].order.OrderID, returnOrder.OrderID == tables[returnOrder.TableID].order.OrderID, "\n",
+			"Waiter ID:", returnOrder.WaiterID, ":", tables[returnOrder.TableID].order.WaiterID, returnOrder.WaiterID == tables[returnOrder.TableID].order.WaiterID, "\n",
+			"Table ID:", returnOrder.TableID, ":", tables[returnOrder.TableID].order.TableID, returnOrder.TableID == tables[returnOrder.TableID].order.TableID, "\n",
+			"Items ID:", returnOrder.Items, ":", tables[returnOrder.TableID].order.Items, pkg.SlicesEqual(returnOrder.Items, tables[returnOrder.TableID].order.Items), "\n",
+			"Priority ID:", returnOrder.Priority, ":", tables[returnOrder.TableID].order.Priority, returnOrder.Priority == tables[returnOrder.TableID].order.Priority, "\n",
+			"Max Wait ID:", returnOrder.MaxWait, ":", tables[returnOrder.TableID].order.MaxWait, returnOrder.MaxWait == tables[returnOrder.TableID].order.MaxWait, "\n",
+			"Pick-up time ID:", returnOrder.PickUpTime, ":", tables[returnOrder.TableID].order.PickUpTime, returnOrder.PickUpTime.Local().Equal(tables[returnOrder.TableID].order.PickUpTime),
+		)
+	}
 	tables[returnOrder.TableID].order = pkg.Order{}
 	tables[returnOrder.TableID].tableState = FREE
-
-	log.Println("Order:", returnOrder.OrderID, "Match order:", correctDelivery, "Waiter:", w.waiterID, "Rating:", rating)
 }
 
 func (t *Table) createNewOrder() *pkg.Order {
@@ -265,7 +281,8 @@ func (t *Table) createNewOrder() *pkg.Order {
 }
 
 func sendOrderKitchen(order pkg.Order) {
-	log.Println("Waiter:", order.WaiterID, "order:", order.OrderID, "sent to kitchen")
+	// communicationLog.Println("Order sent, id:", order.OrderID, "Waiter:", order.WaiterID, "TABLE:", order.TableID)
+	communicationLog.Println("Halloha")
 
 	payloadBuffer := new(bytes.Buffer)
 	json.NewEncoder(payloadBuffer).Encode(order)
@@ -287,6 +304,7 @@ func Lounge() {
 				}()
 			}
 		}
+		break
 	}
 }
 
@@ -294,7 +312,7 @@ func main() {
 	time.Sleep(time.Second)
 	initializeTables()
 	initializeWaiters()
-	// initLogs()
+	initLogs()
 	go Lounge()
 	startServer()
 }
