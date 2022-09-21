@@ -23,7 +23,7 @@ const (
 	KITCHEN_URL = "http://kitchen:8881/order"
 	LISTENPORT  = ":8882"
 	NR_WAITERS  = 4
-	NR_TABLES   = 3
+	NR_TABLES   = 10
 	MIN_W_DELAY = 2
 	MAX_W_DELAY = 4
 	RUNSPEED    = time.Millisecond
@@ -304,7 +304,6 @@ func Lounge() {
 				}()
 			}
 		}
-		break
 	}
 }
 
