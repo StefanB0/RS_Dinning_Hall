@@ -12,6 +12,13 @@ type Order struct {
 	PickUpTime time.Time `json:"pick_up_time"`
 }
 
+type ServedOrder struct {
+	orderResponse   OrderResponse
+	servingTime     time.Time
+	correctDelivery bool
+	rating          int
+}
+
 type OrderResponse struct {
 	OrderID        int       `json:"order_id"`
 	TableID        int       `json:"table_id"`
@@ -25,4 +32,12 @@ type OrderResponse struct {
 		Cook_ID int
 		Food_ID int
 	} `json:"cooking_details"`
+}
+
+type Dish struct {
+	Id               int
+	Name             string
+	PreparationTime  int
+	Complexity       int
+	CookingApparatus string
 }
