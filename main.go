@@ -26,6 +26,7 @@ var (
 )
 
 func initializeTables() {
+	ledger = pkg.CreateRandomLedger(LEDGER_SIZE, MAX_ORDER_DISH, dishMenu)
 	for i := 0; i < NR_TABLES; i++ {
 		ntable := *pkg.NewTable(i, &globalOrderID, dishMenu, MAX_ORDER_DISH, RUNSPEED, readyTables)
 		tables = append(tables, ntable)
