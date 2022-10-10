@@ -16,11 +16,30 @@ type Counter struct {
 	mu sync.Mutex
 }
 
-func (c *Counter) Increment() {
+type GeneralRating struct {
+	totalRating float32
+	totalOrders float32
+	avgRating   float32
+	mu          sync.Mutex
+}
+
+func (r *GeneralRating) Increment(rating int) float32 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.totalOrders++
+	r.totalRating += float32(rating)
+	r.avgRating = r.totalRating / r.totalOrders
+
+	return r.avgRating
+}
+
+func (c *Counter) Increment() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
 	c.I++
+
+	return c.I
 }
 
 func (c *Counter) Value() int {
@@ -32,21 +51,22 @@ func (c *Counter) Value() int {
 
 func DetermineRating(maxWait int, pickUpTime, servingTime time.Time, RUNSPEED time.Duration, correctDelivery bool) float64 {
 	rating := 0.0
+	elapsedTime := int(servingTime.Sub(pickUpTime) / RUNSPEED)
 
 	if !correctDelivery {
 		return 0
 	}
 
 	switch {
-	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < maxWait:
+	case elapsedTime < maxWait:
 		rating = 5
-	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*11)/10:
+	case elapsedTime < (maxWait*11)/10:
 		rating = 4
-	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*12)/10:
+	case elapsedTime < (maxWait*12)/10:
 		rating = 3
-	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*13)/10:
+	case elapsedTime < (maxWait*13)/10:
 		rating = 2
-	case int(servingTime.Sub(pickUpTime)/RUNSPEED) < (maxWait*14)/10:
+	case elapsedTime < (maxWait*14)/10:
 		rating = 1
 	default:
 		rating = 0
@@ -70,45 +90,9 @@ func CheckMatchingOrders(order Order, orderResponse OrderResponse) bool {
 	return true
 }
 
-func CalculatePriority(newOrder *Order, dishMenu []Dish, ledger []float64) int {
-	var totalTime float64
-	newOrderPosition := len(ledger) - 1
-	for _, id := range newOrder.Items {
-		totalTime += float64(dishMenu[id].PreparationTime)
-	}
-	
-	fractionalPriority := float64(newOrder.MaxWait) / totalTime
-	for i := 1; i < len(ledger); i++ {
-		if (fractionalPriority < ledger[i]) {
-			newOrderPosition = i - 1
-			break
-		}
-	}
-
-	ledger[newOrderPosition] = fractionalPriority
-	ledgerRange := len(ledger) / 5
-
-	return (newOrderPosition / ledgerRange) + 1
-}
-
-func CreateRandomLedger(size int, maxDish int, dishMenu []Dish) []float64 {
-	ledger := make([]float64, size)
-	for i := 0; i < size; i++ {
-		itemsNr := rand.Intn(maxDish) + 1
-		totalTime := 0
-		maxTime := 0
-		for i := 0; i < itemsNr; i++ {
-			dishTime := dishMenu[rand.Intn(len(dishMenu)-1)+1].PreparationTime
-			totalTime += dishTime
-			if (maxTime < dishTime) {
-				maxTime = dishTime
-			}
-		}
-		ledger[i] = float64(maxTime) / float64(totalTime)
-	}
-
-	sort.Float64s(ledger)
-	return ledger
+func SimplePriority(newOrder *Order, maxOrderNr int) int {
+	r := (maxOrderNr-1)/5 + 1
+	return (len(newOrder.Items)-1)/r + 1
 }
 
 func SlicesEqual(sa []int, sb []int) bool {
@@ -147,4 +131,49 @@ func ReadMenu(path string) []Dish {
 	json.Unmarshal(bytevalue, &newMenu)
 
 	return newMenu
+}
+
+func listDurations(slice []int, dishmenu []Dish) []int {
+	s := make([]int, len(slice))
+	for i := 0; i < len(slice); i++ {
+		s[i] = dishmenu[slice[i]].PreparationTime
+	}
+	return s
+}
+
+func menuDistribution() int {
+	result := 0
+	weights := []int{2, 4, 1, 4, 2, 1, 2, 2, 1, 4, 4, 4, 2}
+	for i := 1; i < len(weights); i++ {
+		weights[i] += weights[i-1]
+	}
+	tR := weights[len(weights)-1]
+	r := rand.Intn(tR) + 1
+	for i := 1; i < len(weights); i++ {
+		if r > weights[i-1] && r <= weights[i] {
+			result = i
+		}
+	}
+	return result
+}
+
+func lengthDistribution(max int) int {
+	result := 0
+	r := rand.Intn(4)
+	switch r {
+	case 0:
+		result = rand.Intn(3) + 1
+	case 1:
+		result = rand.Intn(5) + 1
+	case 2:
+		result = rand.Intn(7) + 1
+	case 3:
+		result = rand.Intn(max) + 1
+	}
+
+	if result > max {
+		result = max
+	}
+
+	return result
 }

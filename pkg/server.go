@@ -51,7 +51,7 @@ func (s *MyServer) receiveRequest(w http.ResponseWriter, r *http.Request) {
 	var newFinishedDish OrderResponse
 	json.Unmarshal(reqBody, &newFinishedDish)
 
-	log.Println("Order received back:", newFinishedDish.OrderID)
+	log.Println("HOR:", newFinishedDish.OrderID)
 	s.waiters[newFinishedDish.WaiterID].waiterChannel <- newFinishedDish
 	w.WriteHeader(http.StatusCreated)
 }
