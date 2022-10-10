@@ -7,8 +7,6 @@
 # Unignore all dirs
 !*/
 
-#ignore local logs
-logs/
-
 #multistage not implemented
 /*.multistage
+*.txt

@@ -16,6 +16,8 @@ type Waiter struct {
 	readyTables   chan int
 	runspeed      time.Duration
 	tables        []Table
+	dishmenu      []Dish
+	gRating       *GeneralRating
 	kitchenURL    string
 }
 
@@ -27,6 +29,8 @@ func NewWaiter(
 	_readyTables chan int,
 	_runspeed time.Duration,
 	_tables []Table,
+	_dishmenu []Dish,
+	_gRating *GeneralRating,
 	_kitchenURL string,
 ) *Waiter {
 	return &Waiter{
@@ -37,6 +41,8 @@ func NewWaiter(
 		readyTables:   _readyTables,
 		runspeed:      _runspeed,
 		tables:        _tables,
+		dishmenu:      _dishmenu,
+		gRating:       _gRating,
 		kitchenURL:    _kitchenURL,
 	}
 }
@@ -46,9 +52,7 @@ func (w *Waiter) WorkingWaiter() {
 		select {
 		case t := <-w.readyTables:
 			w.takeOrder(t)
-
 		case returnOrder := <-w.waiterChannel:
-			returnOrder.PickUpTime.Round(w.runspeed)
 			w.returnOrderToTable(returnOrder)
 		}
 	}
@@ -60,7 +64,7 @@ func (w *Waiter) takeOrder(tableID int) {
 	w.tables[tableID].order.WaiterID = w.waiterID
 	w.tables[tableID].tableState = W_SERVED
 
-	Delay(w.minDelay, w.maxDelay, w.runspeed)
+	time.Sleep(2 * w.runspeed)
 
 	sendOrderKitchen(w.tables[tableID].order, w.kitchenURL)
 }
@@ -69,15 +73,17 @@ func sendOrderKitchen(order Order, url string) {
 	payloadBuffer := new(bytes.Buffer)
 	json.NewEncoder(payloadBuffer).Encode(order)
 
-	log.Println("Order:", order.OrderID," sent.")
+	log.Println("HOS:", order.OrderID)
 	req, _ := http.NewRequest("POST", url, payloadBuffer)
 	client := &http.Client{}
 	client.Do(req)
 }
 
 func (w *Waiter) returnOrderToTable(returnOrder OrderResponse) {
+	returnOrder.PickUpTime = returnOrder.PickUpTime.Round(w.runspeed)
 	servingTime := time.Now().Round(w.runspeed)
 	correctDelivery := CheckMatchingOrders(w.tables[returnOrder.TableID].order, returnOrder)
+	durations := listDurations(returnOrder.Items, w.dishmenu)
 	rating := DetermineRating(
 		returnOrder.MaxWait,
 		returnOrder.PickUpTime,
@@ -86,7 +92,9 @@ func (w *Waiter) returnOrderToTable(returnOrder OrderResponse) {
 		correctDelivery,
 	)
 
-	log.Println("Served Order:", returnOrder.OrderID, "Priority:", returnOrder.Priority, "Match order:", correctDelivery, returnOrder.Items, "Waiter:", w.waiterID, "Table:", returnOrder.TableID, "Rating:", rating)
+	avgR := w.gRating.Increment(int(rating))
+	log.Println("HOD: OrderID:", returnOrder.OrderID, durations, "P:", returnOrder.Priority, "T:", returnOrder.CookingTime, ":", int(servingTime.Sub(returnOrder.PickUpTime)/w.runspeed), "/", returnOrder.MaxWait, "R:", rating, "Avg:", avgR)
+
 	if !correctDelivery {
 		log.Println(
 			"ERROR: ",

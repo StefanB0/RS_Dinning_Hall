@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"math/rand"
 	"time"
 )
 
@@ -10,7 +9,6 @@ type Table struct {
 	tableState    int
 	globalOrderID *Counter
 	dishMenu      []Dish
-	ledger        []float64
 	order         Order
 	maxOrderNr    int
 	runspeed      time.Duration
@@ -27,7 +25,6 @@ func NewTable(
 	_tableID int,
 	_globalOrderID *Counter,
 	_dishMenu []Dish,
-	_ledger []float64,
 	_maxOrderNr int,
 	_runspeed time.Duration,
 	_readyTables chan int,
@@ -37,7 +34,6 @@ func NewTable(
 		tableState:    FREE,
 		globalOrderID: _globalOrderID,
 		dishMenu:      _dishMenu,
-		ledger:        _ledger,
 		maxOrderNr:    _maxOrderNr,
 		runspeed:      _runspeed,
 		readyTables:   _readyTables,
@@ -45,34 +41,35 @@ func NewTable(
 }
 
 func (t *Table) createNewOrder() *Order {
-	t.globalOrderID.Increment()
+	id := t.globalOrderID.Increment()
 	max := 0
 	_items := []int{}
-	itemsNr := rand.Intn(t.maxOrderNr) + 1
+	itemsNr := lengthDistribution(t.maxOrderNr)
 
 	for i := 0; i < itemsNr; i++ {
-		_items = append(_items, rand.Intn(len(t.dishMenu)-1)+1)
+		_items = append(_items, menuDistribution())
 		if max < t.dishMenu[_items[i]].PreparationTime {
 			max = t.dishMenu[_items[i]].PreparationTime
 		}
 	}
 
 	newOrder := &Order{
-		OrderID: t.globalOrderID.Value(),
+		OrderID: id,
 		TableID: t.tableID,
 		Items:   _items,
 		MaxWait: max * 13 / 10,
 	}
 
-	newOrder.Priority = CalculatePriority(newOrder, t.dishMenu, t.ledger)
+	newOrder.Priority = SimplePriority(newOrder, t.maxOrderNr)
 
 	return newOrder
 }
 
 func (t *Table) WorkingTable() {
+	Delay(10, 100, t.runspeed)
 	for {
 		if t.tableState == FREE {
-			<-time.After(30 * t.runspeed)
+			Delay(45, 60, t.runspeed)
 			t.tableState = W_ORDER
 			t.readyTables <- t.tableID
 		}
